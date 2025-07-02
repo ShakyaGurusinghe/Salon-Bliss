@@ -1,108 +1,34 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Star, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
+import { fetchServices, type Service } from '@/lib/servicesApi';
+
+
 
 const Services = () => {
   const { user } = useAuth();
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const services = [
-    {
-      id: 1,
-      name: 'Classic Haircut',
-      description: 'Professional haircut with wash and basic styling',
-      price: 45,
-      duration: 60,
-      category: 'Hair',
-      image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400',
-      rating: 4.8,
-      popular: true
-    },
-    {
-      id: 2,
-      name: 'Hair Color & Highlights',
-      description: 'Full color service with highlights and treatment',
-      price: 120,
-      duration: 180,
-      category: 'Hair',
-      image: 'https://images.unsplash.com/photo-1492106087820-71f1a00d2b11?w=400',
-      rating: 4.9,
-      popular: true
-    },
-    {
-      id: 3,
-      name: 'Deep Cleansing Facial',
-      description: 'Rejuvenating facial with deep pore cleansing',
-      price: 65,
-      duration: 90,
-      category: 'Skincare',
-      image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400',
-      rating: 4.7,
-      popular: false
-    },
-    {
-      id: 4,
-      name: 'Anti-Aging Facial',
-      description: 'Premium anti-aging treatment with collagen mask',
-      price: 95,
-      duration: 120,
-      category: 'Skincare',
-      image: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=400',
-      rating: 4.8,
-      popular: true
-    },
-    {
-      id: 5,
-      name: 'Gel Manicure',
-      description: 'Long-lasting gel manicure with nail art options',
-      price: 35,
-      duration: 45,
-      category: 'Nails',
-      image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400',
-      rating: 4.6,
-      popular: false
-    },
-    {
-      id: 6,
-      name: 'Spa Pedicure',
-      description: 'Relaxing pedicure with foot massage and treatment',
-      price: 55,
-      duration: 75,
-      category: 'Nails',
-      image: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=400',
-      rating: 4.7,
-      popular: false
-    },
-    {
-      id: 7,
-      name: 'Eyebrow Shaping',
-      description: 'Professional eyebrow shaping and tinting',
-      price: 25,
-      duration: 30,
-      category: 'Beauty',
-      image: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=400',
-      rating: 4.5,
-      popular: false
-    },
-    {
-      id: 8,
-      name: 'Full Body Massage',
-      description: 'Relaxing full body massage with aromatherapy',
-      price: 85,
-      duration: 90,
-      category: 'Wellness',
-      image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400',
-      rating: 4.9,
-      popular: true
-    }
-  ];
-
-  const categories = ['All', 'Hair', 'Skincare', 'Nails', 'Beauty', 'Wellness'];
-  const [selectedCategory, setSelectedCategory] = React.useState('All');
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const response = await fetchServices();
+        setServices(response.data.data.filter((s: Service) => s.active));
+      } catch (error) {
+        toast.error('Failed to load services');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadServices();
+  }, []);
 
   const filteredServices = selectedCategory === 'All' 
     ? services 

@@ -1,84 +1,130 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import { Plus, Edit, X, Clock, DollarSign, Star } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import {
+  fetchServices,
+  createService,
+  fetchOneService,
+  updateService,
+  deleteService,
+  toggleServiceStatus,
+  type Service,
+} from "@/lib/servicesApi";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Plus, Edit, X, Clock, DollarSign, Star } from "lucide-react";
 
 const ManageServices = () => {
-  const [services, setServices] = useState([
-    {
-      id: 1,
-      name: 'Classic Haircut',
-      description: 'Professional haircut with wash and basic styling',
-      price: 45,
-      duration: 60,
-      category: 'Hair',
-      active: true,
-      rating: 4.8,
-      bookings: 45
-    },
-    {
-      id: 2,
-      name: 'Hair Color & Highlights',
-      description: 'Full color service with highlights and treatment',
-      price: 120,
-      duration: 180,
-      category: 'Hair',
-      active: true,
-      rating: 4.9,
-      bookings: 23
-    },
-    {
-      id: 3,
-      name: 'Deep Cleansing Facial',
-      description: 'Rejuvenating facial with deep pore cleansing',
-      price: 65,
-      duration: 90,
-      category: 'Skincare',
-      active: true,
-      rating: 4.7,
-      bookings: 18
-    },
-    {
-      id: 4,
-      name: 'Anti-Aging Facial',
-      description: 'Premium anti-aging treatment with collagen mask',
-      price: 95,
-      duration: 120,
-      category: 'Skincare',
-      active: false,
-      rating: 4.8,
-      bookings: 8
-    }
-  ]);
-
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingService, setEditingService] = useState<any>(null);
+  const [editingService, setEditingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    duration: '',
-    category: '',
-    active: true
+    name: "",
+    description: "",
+    price: "",
+    duration: "",
+    category: "",
+    active: true,
   });
 
-  const categories = ['Hair', 'Skincare', 'Nails', 'Beauty', 'Wellness'];
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const response = await fetchServices();
+        setServices(response.data.data);
+      } catch (error) {
+        toast.error("Failed to load services");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadServices();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      if (editingService) {
+        const response = await updateService(editingService._id, {
+          ...formData,
+          price: parseFloat(formData.price),
+          duration: parseInt(formData.duration),
+        });
+        setServices(
+          services.map((s) =>
+            s._id === editingService._id ? response.data.data : s
+          )
+        );
+        toast.success("Service updated!");
+      } else {
+        const response = await createService({
+          ...formData,
+          price: parseFloat(formData.price),
+          duration: parseInt(formData.duration),
+        });
+        setServices([...services, response.data.data]);
+        toast.success("Service created!");
+      }
+      handleCloseDialog();
+    } catch (error) {
+      toast.error(error.message || "Operation failed");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Delete this service?")) {
+      try {
+        await deleteService(id);
+        setServices(services.filter((s) => s._id !== id));
+        toast.success("Service deleted!");
+      } catch (error) {
+        toast.error("Failed to delete service");
+      }
+    }
+  };
+
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      await toggleServiceStatus(id, !currentStatus);
+      setServices(
+        services.map((s) =>
+          s._id === id ? { ...s, active: !currentStatus } : s
+        )
+      );
+      toast.success("Status updated!");
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const categories = ["Hair", "Skincare", "Nails", "Beauty", "Wellness"];
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      description: '',
-      price: '',
-      duration: '',
-      category: '',
-      active: true
+      name: "",
+      description: "",
+      price: "",
+      duration: "",
+      category: "",
+      active: true,
     });
     setEditingService(null);
   };
@@ -92,7 +138,7 @@ const ManageServices = () => {
         price: service.price.toString(),
         duration: service.duration.toString(),
         category: service.category,
-        active: service.active
+        active: service.active,
       });
     } else {
       resetForm();
@@ -105,55 +151,21 @@ const ManageServices = () => {
     resetForm();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.description || !formData.price || !formData.duration || !formData.category) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-
-    const serviceData = {
-      ...formData,
-      price: parseFloat(formData.price),
-      duration: parseInt(formData.duration),
-      rating: editingService?.rating || 0,
-      bookings: editingService?.bookings || 0
-    };
-
-    if (editingService) {
-      // Update existing service
-      setServices(services.map(service => 
-        service.id === editingService.id 
-          ? { ...service, ...serviceData }
-          : service
-      ));
-      toast.success('Service updated successfully!');
-    } else {
-      // Add new service
-      const newService = {
-        id: Math.max(...services.map(s => s.id)) + 1,
-        ...serviceData
-      };
-      setServices([...services, newService]);
-      toast.success('Service added successfully!');
-    }
-
-    handleCloseDialog();
-  };
 
   const toggleServiceStatus = (serviceId: number) => {
-    setServices(services.map(service =>
-      service.id === serviceId
-        ? { ...service, active: !service.active }
-        : service
-    ));
-    toast.success('Service status updated!');
+    setServices(
+      services.map((service) =>
+        service.id === serviceId
+          ? { ...service, active: !service.active }
+          : service
+      )
+    );
+    toast.success("Service status updated!");
   };
 
   const deleteService = (serviceId: number) => {
-    setServices(services.filter(service => service.id !== serviceId));
-    toast.success('Service deleted successfully!');
+    setServices(services.filter((service) => service.id !== serviceId));
+    toast.success("Service deleted successfully!");
   };
 
   return (
@@ -163,16 +175,19 @@ const ManageServices = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-              Manage <span className="bg-gradient-to-r from-rose-600 to-purple-600 bg-clip-text text-transparent">Services</span>
+              Manage{" "}
+              <span className="bg-gradient-to-r from-rose-600 to-purple-600 bg-clip-text text-transparent">
+                Services
+              </span>
             </h1>
             <p className="text-lg text-gray-600">
               Add, edit, and manage your salon services.
             </p>
           </div>
-          
+
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button 
+              <Button
                 onClick={() => handleOpenDialog()}
                 className="bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-600 hover:to-purple-700"
               >
@@ -180,21 +195,23 @@ const ManageServices = () => {
                 Add Service
               </Button>
             </DialogTrigger>
-            
+
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>
-                  {editingService ? 'Edit Service' : 'Add New Service'}
+                  {editingService ? "Edit Service" : "Add New Service"}
                 </DialogTitle>
               </DialogHeader>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Service Name</Label>
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="Enter service name"
                     required
                   />
@@ -205,7 +222,9 @@ const ManageServices = () => {
                   <textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     placeholder="Enter service description"
                     className="w-full p-3 border border-gray-200 rounded-lg resize-none h-20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
                     required
@@ -220,7 +239,9 @@ const ManageServices = () => {
                       type="number"
                       step="0.01"
                       value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price: e.target.value })
+                      }
                       placeholder="0.00"
                       required
                     />
@@ -232,7 +253,9 @@ const ManageServices = () => {
                       id="duration"
                       type="number"
                       value={formData.duration}
-                      onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                      onChange={(e) =>
+                        setFormData({ ...formData, duration: e.target.value })
+                      }
                       placeholder="60"
                       required
                     />
@@ -241,7 +264,12 @@ const ManageServices = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, category: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
@@ -260,7 +288,9 @@ const ManageServices = () => {
                     type="checkbox"
                     id="active"
                     checked={formData.active}
-                    onChange={(e) => setFormData({...formData, active: e.target.checked})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, active: e.target.checked })
+                    }
                     className="rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                   />
                   <Label htmlFor="active">Active Service</Label>
@@ -271,7 +301,7 @@ const ManageServices = () => {
                     type="submit"
                     className="flex-1 bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-600 hover:to-purple-700"
                   >
-                    {editingService ? 'Update Service' : 'Add Service'}
+                    {editingService ? "Update Service" : "Add Service"}
                   </Button>
                   <Button
                     type="button"
@@ -289,7 +319,12 @@ const ManageServices = () => {
         {/* Services Grid */}
         <div className="grid lg:grid-cols-2 gap-6">
           {services.map((service) => (
-            <Card key={service.id} className={`border-0 shadow-lg transition-all ${service.active ? 'bg-white/80' : 'bg-gray-100/80'}`}>
+            <Card
+              key={service.id}
+              className={`border-0 shadow-lg transition-all ${
+                service.active ? "bg-white/80" : "bg-gray-100/80"
+              }`}
+            >
               <CardHeader className="pb-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -298,15 +333,23 @@ const ManageServices = () => {
                       <Badge variant="outline" className="text-xs">
                         {service.category}
                       </Badge>
-                      <Badge className={service.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                        {service.active ? 'Active' : 'Inactive'}
+                      <Badge
+                        className={
+                          service.active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }
+                      >
+                        {service.active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
-                    <p className="text-gray-600 text-sm">{service.description}</p>
+                    <p className="text-gray-600 text-sm">
+                      {service.description}
+                    </p>
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div className="flex items-center space-x-1 text-gray-600">
@@ -324,7 +367,8 @@ const ManageServices = () => {
                 </div>
 
                 <div className="text-sm text-gray-600">
-                  <span className="font-medium">{service.bookings}</span> bookings this month
+                  <span className="font-medium">{service.bookings}</span>{" "}
+                  bookings this month
                 </div>
 
                 <div className="flex space-x-2 pt-4 border-t border-gray-100">
@@ -341,9 +385,13 @@ const ManageServices = () => {
                     size="sm"
                     variant="outline"
                     onClick={() => toggleServiceStatus(service.id)}
-                    className={service.active ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-green-50 hover:text-green-600'}
+                    className={
+                      service.active
+                        ? "hover:bg-red-50 hover:text-red-600"
+                        : "hover:bg-green-50 hover:text-green-600"
+                    }
                   >
-                    {service.active ? 'Deactivate' : 'Activate'}
+                    {service.active ? "Deactivate" : "Activate"}
                   </Button>
                   <Button
                     size="sm"
@@ -363,11 +411,13 @@ const ManageServices = () => {
           <Card className="border-0 shadow-lg bg-white/80">
             <CardContent className="p-12 text-center">
               <Plus className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Services Added</h3>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                No Services Added
+              </h3>
               <p className="text-gray-500 mb-6">
                 Add your first service to get started with bookings.
               </p>
-              <Button 
+              <Button
                 onClick={() => handleOpenDialog()}
                 className="bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-600 hover:to-purple-700"
               >

@@ -152,21 +152,21 @@ const ManageServices = () => {
   };
 
 
-  const toggleServiceStatus = (serviceId: number) => {
-    setServices(
-      services.map((service) =>
-        service.id === serviceId
-          ? { ...service, active: !service.active }
-          : service
-      )
-    );
-    toast.success("Service status updated!");
-  };
+  // const toggleServiceStatus = (serviceId: number) => {
+  //   setServices(
+  //     services.map((service) =>
+  //       service.id === serviceId
+  //         ? { ...service, active: !service.active }
+  //         : service
+  //     )
+  //   );
+  //   toast.success("Service status updated!");
+  // };
 
-  const deleteService = (serviceId: number) => {
-    setServices(services.filter((service) => service.id !== serviceId));
-    toast.success("Service deleted successfully!");
-  };
+  // const deleteService = (serviceId: number) => {
+  //   setServices(services.filter((service) => service.id !== serviceId));
+  //   toast.success("Service deleted successfully!");
+  // };
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -320,7 +320,7 @@ const ManageServices = () => {
         <div className="grid lg:grid-cols-2 gap-6">
           {services.map((service) => (
             <Card
-              key={service.id}
+              key={service._id}
               className={`border-0 shadow-lg transition-all ${
                 service.active ? "bg-white/80" : "bg-gray-100/80"
               }`}
@@ -384,7 +384,7 @@ const ManageServices = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => toggleServiceStatus(service.id)}
+                    onClick={() => toggleServiceStatus(service._id,service.active)}
                     className={
                       service.active
                         ? "hover:bg-red-50 hover:text-red-600"
@@ -396,7 +396,7 @@ const ManageServices = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => deleteService(service.id)}
+                    onClick={() => deleteService(service._id)}
                     className="hover:bg-red-50 hover:text-red-600"
                   >
                     <X className="w-4 h-4" />

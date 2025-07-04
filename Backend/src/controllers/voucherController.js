@@ -58,4 +58,28 @@ const getVoucherByID = async(req,res,next) => {
 }
 
 
-module.exports = {getVouchers, createVoucher,getVoucherByID};
+
+//update a specific voucher
+const updateVoucher = async(req,res,next) => {
+    const id = req.params.id;
+    const {code,title,description,discount,type,validFrom,validUntil,minSpend,maxDiscount,usageLimit,category,active} = req.body;
+    
+    let voucher;
+
+    try{
+        voucher = await Voucher.findByIdAndUpdate(id,{code:code,title:title,description:description,discount:discount,type:type,validFrom:validFrom,validUntil:validUntil,minSpend:minSpend,maxDiscount:maxDiscount,usageLimit:usageLimit,category:category,active:active});
+        voucher = await voucher.save();
+        return res.status(200).json({voucher,message: "voucher is successfully updated"})
+
+    }catch(err){
+        console.log(err);
+    }
+     if(!voucher){
+        return res.status(404).json({message: "Voucher is not updated"});
+    }
+    
+}
+
+
+
+module.exports = {getVouchers, createVoucher,getVoucherByID,updateVoucher};

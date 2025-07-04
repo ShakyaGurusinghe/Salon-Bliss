@@ -80,6 +80,19 @@ const updateVoucher = async(req,res,next) => {
     
 }
 
+//delete a specific voucher
+const deleteVoucher = async(req,res,next) => {
+    const id = req.params.id;
 
+    try{
+        await Voucher.findByIdAndDelete(id);
+        return res.status(200).json({message:"Voucher deleted successfully"});
+    }catch(err){
+        console.log(err);
+    }
+    if(!voucher){
+        return res.status(404).json({message: "Can't delete the voucher"});
+    }
+}
 
-module.exports = {getVouchers, createVoucher,getVoucherByID,updateVoucher};
+module.exports = {getVouchers, createVoucher,getVoucherByID,updateVoucher,deleteVoucher};

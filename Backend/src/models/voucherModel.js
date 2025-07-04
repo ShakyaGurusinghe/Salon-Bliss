@@ -5,7 +5,6 @@ const voucherSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Voucher code is required'],
     unique: true,
-    uppercase: true,
     trim: true,
     maxlength: [20, 'Voucher code cannot exceed 20 characters']
   },

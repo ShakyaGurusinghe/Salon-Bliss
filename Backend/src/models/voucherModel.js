@@ -88,7 +88,7 @@ const voucherSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-voucherSchema.index({ code: 1 });
+
 voucherSchema.index({ validUntil: 1 });
 voucherSchema.index({ active: 1 });
 voucherSchema.index({ category: 1 });

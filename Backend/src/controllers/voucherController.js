@@ -1,23 +1,23 @@
 const Voucher = require("../models/voucherModel");
 
 
-//get all vouchers
-const getVouchers = async(req,res,next)=>{
-    let vouchers;
-    try{    
-        vouchers = await Voucher.find();
-        return res.status(200).json({vouchers}); 
 
-    } catch(err){
-        console.log(err);
-        return res.status(404).json({message: "Error with finding the vouchers"});
-    }
-    //not found
-     if(!vouchers){
-        return res.status(400).json({message:"No vouchers found"}); 
-    };
 
+// get all vouchers
+const getVouchers = async (req, res, next) => {
+  try {
+    const vouchers = await Voucher.find();
+    console.log("🎯 Found vouchers in DB:", vouchers); 
+    res.status(200).json({
+      success: true,
+      data: { vouchers }, // ✅ matches frontend expectation
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
+
+
 
 
 //create a voucher
@@ -27,7 +27,7 @@ const createVoucher = async(req,res,next) => {
     try{
         voucher = new Voucher({code,title,description,discount,type,validFrom,validUntil,minSpend,maxDiscount,usageLimit,category,active});
         await voucher.save();
-        return res.status(200).json({message:"Voucher is created Successfully"}).json({voucher});;
+        return res.status(201).json({ message: "Voucher created successfully",voucher: voucher });
       
     }catch(err){
         console.log(err);
@@ -59,26 +59,53 @@ const getVoucherByID = async(req,res,next) => {
 
 
 
-//update a specific voucher
+// //update a specific voucher
+// const updateVoucher = async(req,res,next) => {
+//     const id = req.params.id;
+//     const {code,title,description,discount,type,validFrom,validUntil,minSpend,maxDiscount,usageLimit,category,active} = req.body;
+    
+//     let voucher;
+
+//     try{
+//         voucher = await Voucher.findByIdAndUpdate(id,{code:code,title:title,description:description,discount:discount,type:type,validFrom:validFrom,validUntil:validUntil,minSpend:minSpend,maxDiscount:maxDiscount,usageLimit:usageLimit,category:category,active:active});
+//         voucher = await voucher.save();
+//         return res.status(200).json({voucher,message: "voucher is successfully updated"})
+
+//     }catch(err){
+//         console.log(err);
+//     }
+//      if(!voucher){
+//         return res.status(404).json({message: "Voucher is not updated"});
+//     }
+    
+// }
+
+
 const updateVoucher = async(req,res,next) => {
     const id = req.params.id;
     const {code,title,description,discount,type,validFrom,validUntil,minSpend,maxDiscount,usageLimit,category,active} = req.body;
     
-    let voucher;
+    try {
+        // Pass { new: true } to get the updated document returned
+        const voucher = await Voucher.findByIdAndUpdate(
+          id,
+          { code, title, description, discount, type, validFrom, validUntil, minSpend, maxDiscount, usageLimit, category, active },
+          { new: true }  // This is the key fix!
+        );
 
-    try{
-        voucher = await Voucher.findByIdAndUpdate(id,{code:code,title:title,description:description,discount:discount,type:type,validFrom:validFrom,validUntil:validUntil,minSpend:minSpend,maxDiscount:maxDiscount,usageLimit:usageLimit,category:category,active:active});
-        voucher = await voucher.save();
-        return res.status(200).json({voucher,message: "voucher is successfully updated"})
+        if (!voucher) {
+          return res.status(404).json({ message: "Voucher not found" });
+        }
 
-    }catch(err){
-        console.log(err);
+        return res.status(200).json({ voucher, message: "Voucher is successfully updated" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error during update" });
     }
-     if(!voucher){
-        return res.status(404).json({message: "Voucher is not updated"});
-    }
-    
-}
+};
+
+
+
 
 //delete a specific voucher
 const deleteVoucher = async(req,res,next) => {
@@ -95,4 +122,17 @@ const deleteVoucher = async(req,res,next) => {
     }
 }
 
-module.exports = {getVouchers, createVoucher,getVoucherByID,updateVoucher,deleteVoucher};
+
+const getVoucherStats = async (req, res, next) => {
+  try {
+    const stats = await Voucher.getVoucherStats();
+    res.status(200).json(stats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error getting voucher stats" });
+  }
+};
+
+
+module.exports = { getVouchers, createVoucher, getVoucherByID, updateVoucher, deleteVoucher, getVoucherStats };
+

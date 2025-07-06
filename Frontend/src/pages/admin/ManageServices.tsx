@@ -89,18 +89,22 @@ const ManageServices = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Delete this service?")) {
-      try {
-        await deleteService(id);
-        setServices(services.filter((s) => s._id !== id));
-        toast.success("Service deleted!");
-      } catch (error) {
-        toast.error("Failed to delete service");
-      }
+const handleDelete = async (id: string) => {
+  if (window.confirm("Delete this service?")) {
+    // Optimistically update UI
+    const previousServices = services;
+    setServices(services.filter((s) => s._id !== id));
+    
+    try {
+      await deleteService(id);
+      toast.success("Service deleted!");
+    } catch (error) {
+      // Revert if API call fails
+      setServices(previousServices);
+      toast.error("Failed to delete service");
     }
-  };
-
+  }
+};
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     try {
       await toggleServiceStatus(id, !currentStatus);
@@ -152,16 +156,16 @@ const ManageServices = () => {
   };
 
 
-  // const toggleServiceStatus = (serviceId: number) => {
-  //   setServices(
-  //     services.map((service) =>
-  //       service.id === serviceId
-  //         ? { ...service, active: !service.active }
-  //         : service
-  //     )
-  //   );
-  //   toast.success("Service status updated!");
-  // };
+  const toggleServiceStatus = (serviceId: number) => {
+    setServices(
+      services.map((service) =>
+        service.id === serviceId
+          ? { ...service, active: !service.active }
+          : service
+      )
+    );
+    toast.success("Service status updated!");
+  };
 
   // const deleteService = (serviceId: number) => {
   //   setServices(services.filter((service) => service.id !== serviceId));
@@ -354,7 +358,7 @@ const ManageServices = () => {
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div className="flex items-center space-x-1 text-gray-600">
                     <DollarSign className="w-4 h-4" />
-                    <span>${service.price}</span>
+                    <span>{service.price}</span>
                   </div>
                   <div className="flex items-center space-x-1 text-gray-600">
                     <Clock className="w-4 h-4" />

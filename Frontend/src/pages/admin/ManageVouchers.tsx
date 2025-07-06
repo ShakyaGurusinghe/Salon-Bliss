@@ -1,5 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { 
+  getVouchers, 
+  createVoucher, 
+  updateVoucher, 
+  deleteVoucher,
+  getVoucherStats,
+  Voucher
+} from '@/lib/vouchersApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,72 +19,44 @@ import { toast } from 'sonner';
 import { Plus, Edit, X, Gift, Calendar, Percent, DollarSign, Users, TrendingUp } from 'lucide-react';
 
 const ManageVouchers = () => {
-  const [vouchers, setVouchers] = useState([
-    {
-      id: 1,
-      code: 'WELCOME10',
-      title: 'Welcome Discount',
-      description: 'Get 10% off your first appointment',
-      discount: 10,
-      type: 'percentage',
-      validFrom: '2024-01-01',
-      validUntil: '2024-12-31',
-      minSpend: 0,
-      maxDiscount: null,
-      usageLimit: 100,
-      usedCount: 15,
-      active: true,
-      category: 'first-time'
-    },
-    {
-      id: 2,
-      code: 'SAVE20',
-      title: '$20 Off Premium Services',
-      description: 'Save $20 on services over $80',
-      discount: 20,
-      type: 'fixed',
-      validFrom: '2024-01-01',
-      validUntil: '2024-06-30',
-      minSpend: 80,
-      maxDiscount: null,
-      usageLimit: 50,
-      usedCount: 8,
-      active: true,
-      category: 'premium'
-    },
-    {
-      id: 3,
-      code: 'LOYALTY15',
-      title: 'Loyalty Reward',
-      description: '15% off for returning customers',
-      discount: 15,
-      type: 'percentage',
-      validFrom: '2024-01-01',
-      validUntil: '2024-08-15',
-      minSpend: 50,
-      maxDiscount: 30,
-      usageLimit: 200,
-      usedCount: 45,
-      active: true,
-      category: 'loyalty'
-    },
-    {
-      id: 4,
-      code: 'EXPIRED50',
-      title: 'Old Promotion',
-      description: '50% off - expired promotion',
-      discount: 50,
-      type: 'percentage',
-      validFrom: '2023-12-01',
-      validUntil: '2023-12-31',
-      minSpend: 0,
-      maxDiscount: 100,
-      usageLimit: 20,
-      usedCount: 20,
-      active: false,
-      category: 'special'
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [stats, setStats] = useState({
+    totalVouchers: 0,
+    activeVouchers: 0,
+    totalUsage: 0,
+    expiredVouchers: 0
+  });
+
+
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      const [vouchersData, statsData] = await Promise.all([
+        getVouchers(),
+        getVoucherStats()
+      ]);
+
+      console.log("Fetched Vouchers:", vouchersData);
+
+      const safeVouchers = Array.isArray(vouchersData)
+        ? vouchersData
+        : Array.isArray(vouchersData?.vouchers)
+          ? vouchersData.vouchers
+          : [];
+
+      setVouchers(safeVouchers);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load vouchers');
+      setVouchers([]);
     }
-  ]);
+  };
+  loadData();
+}, []);
+
+
+
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState<any>(null);
@@ -153,14 +133,10 @@ const ManageVouchers = () => {
     setFormData({...formData, code: result});
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.code || !formData.title || !formData.description || !formData.discount || !formData.validFrom || !formData.validUntil || !formData.usageLimit) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  try {
     const voucherData = {
       ...formData,
       discount: parseFloat(formData.discount),
@@ -171,36 +147,59 @@ const ManageVouchers = () => {
     };
 
     if (editingVoucher) {
-      setVouchers(vouchers.map(voucher => 
-        voucher.id === editingVoucher.id 
-          ? { ...voucher, ...voucherData }
-          : voucher
+      const updatedVoucher = await updateVoucher(editingVoucher._id, voucherData);
+      setVouchers(vouchers.map(v => 
+        v._id === updatedVoucher._id ? updatedVoucher : v
       ));
       toast.success('Voucher updated successfully!');
     } else {
-      const newVoucher = {
-        id: Math.max(...vouchers.map(v => v.id)) + 1,
-        ...voucherData
-      };
-      setVouchers([...vouchers, newVoucher]);
+      const newVoucher = await createVoucher(voucherData);
+      setVouchers(prev => [...prev, newVoucher]);
       toast.success('Voucher created successfully!');
     }
-
+    
     handleCloseDialog();
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to save voucher');
+  }
+};
+
+    const voucherData = {
+      ...formData,
+      discount: parseFloat(formData.discount),
+      minSpend: parseFloat(formData.minSpend) || 0,
+      maxDiscount: formData.maxDiscount ? parseFloat(formData.maxDiscount) : null,
+      usageLimit: parseInt(formData.usageLimit),
+      usedCount: editingVoucher?.usedCount || 0
+    };
+
+
+  const toggleVoucherStatus = async (voucherId: string) => {
+    try {
+      const voucher = vouchers.find(v => v._id === voucherId);
+      if (!voucher) return;
+      
+      const updatedVoucher = await updateVoucher(voucherId, {
+        active: !voucher.active
+      });
+      
+      setVouchers(vouchers.map(v => 
+        v._id === voucherId ? updatedVoucher : v
+      ));
+      toast.success('Voucher status updated!');
+    } catch (error) {
+      toast.error(error.message || 'Failed to update voucher status');
+    }
   };
 
-  const toggleVoucherStatus = (voucherId: number) => {
-    setVouchers(vouchers.map(voucher =>
-      voucher.id === voucherId
-        ? { ...voucher, active: !voucher.active }
-        : voucher
-    ));
-    toast.success('Voucher status updated!');
-  };
-
-  const deleteVoucher = (voucherId: number) => {
-    setVouchers(vouchers.filter(voucher => voucher.id !== voucherId));
-    toast.success('Voucher deleted successfully!');
+  const deleteVoucherHandler = async (voucherId: string) => {
+    try {
+      await deleteVoucher(voucherId);
+      setVouchers(vouchers.filter(v => v._id !== voucherId));
+      toast.success('Voucher deleted successfully!');
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete voucher');
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -226,7 +225,7 @@ const ManageVouchers = () => {
     return Math.round((used / limit) * 100);
   };
 
-  const getStats = () => {
+ const getStats = () => {
     const totalVouchers = vouchers.length;
     const activeVouchers = vouchers.filter(v => v.active && !isExpired(v.validUntil)).length;
     const totalUsage = vouchers.reduce((sum, v) => sum + v.usedCount, 0);
@@ -235,7 +234,10 @@ const ManageVouchers = () => {
     return { totalVouchers, activeVouchers, totalUsage, expiredVouchers };
   };
 
-  const stats = getStats();
+
+
+
+ 
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -490,7 +492,7 @@ const ManageVouchers = () => {
         <div className="grid lg:grid-cols-2 gap-6">
           {vouchers.map((voucher) => (
             <Card 
-              key={voucher.id} 
+              key={voucher._id} 
               className={`border-0 shadow-lg transition-all ${
                 voucher.active && !isExpired(voucher.validUntil) ? 'bg-white/80' : 'bg-gray-100/80'
               }`}
@@ -582,7 +584,7 @@ const ManageVouchers = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => toggleVoucherStatus(voucher.id)}
+                    onClick={() => toggleVoucherStatus(voucher._id)}
                     className={voucher.active ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-green-50 hover:text-green-600'}
                   >
                     {voucher.active ? 'Deactivate' : 'Activate'}
@@ -590,7 +592,7 @@ const ManageVouchers = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => deleteVoucher(voucher.id)}
+                    onClick={() => deleteVoucher(voucher._id)}
                     className="hover:bg-red-50 hover:text-red-600"
                   >
                     <X className="w-4 h-4" />

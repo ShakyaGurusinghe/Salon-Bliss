@@ -59,26 +59,53 @@ const getVoucherByID = async(req,res,next) => {
 
 
 
-//update a specific voucher
+// //update a specific voucher
+// const updateVoucher = async(req,res,next) => {
+//     const id = req.params.id;
+//     const {code,title,description,discount,type,validFrom,validUntil,minSpend,maxDiscount,usageLimit,category,active} = req.body;
+    
+//     let voucher;
+
+//     try{
+//         voucher = await Voucher.findByIdAndUpdate(id,{code:code,title:title,description:description,discount:discount,type:type,validFrom:validFrom,validUntil:validUntil,minSpend:minSpend,maxDiscount:maxDiscount,usageLimit:usageLimit,category:category,active:active});
+//         voucher = await voucher.save();
+//         return res.status(200).json({voucher,message: "voucher is successfully updated"})
+
+//     }catch(err){
+//         console.log(err);
+//     }
+//      if(!voucher){
+//         return res.status(404).json({message: "Voucher is not updated"});
+//     }
+    
+// }
+
+
 const updateVoucher = async(req,res,next) => {
     const id = req.params.id;
     const {code,title,description,discount,type,validFrom,validUntil,minSpend,maxDiscount,usageLimit,category,active} = req.body;
     
-    let voucher;
+    try {
+        // Pass { new: true } to get the updated document returned
+        const voucher = await Voucher.findByIdAndUpdate(
+          id,
+          { code, title, description, discount, type, validFrom, validUntil, minSpend, maxDiscount, usageLimit, category, active },
+          { new: true }  // This is the key fix!
+        );
 
-    try{
-        voucher = await Voucher.findByIdAndUpdate(id,{code:code,title:title,description:description,discount:discount,type:type,validFrom:validFrom,validUntil:validUntil,minSpend:minSpend,maxDiscount:maxDiscount,usageLimit:usageLimit,category:category,active:active});
-        voucher = await voucher.save();
-        return res.status(200).json({voucher,message: "voucher is successfully updated"})
+        if (!voucher) {
+          return res.status(404).json({ message: "Voucher not found" });
+        }
 
-    }catch(err){
-        console.log(err);
+        return res.status(200).json({ voucher, message: "Voucher is successfully updated" });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error during update" });
     }
-     if(!voucher){
-        return res.status(404).json({message: "Voucher is not updated"});
-    }
-    
-}
+};
+
+
+
 
 //delete a specific voucher
 const deleteVoucher = async(req,res,next) => {
